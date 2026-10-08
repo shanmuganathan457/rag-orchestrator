@@ -1,4 +1,5 @@
 from sqlalchemy import Column, String, Integer, ForeignKey, Text, DateTime, func, JSON
+from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import relationship
 from pgvector.sqlalchemy import Vector
 from app.db.base_class import Base
@@ -23,5 +24,6 @@ class DocumentChunk(Base):
     content = Column(Text, nullable=False)
     page_num = Column(Integer, nullable=True) # Page or source tracking
     embedding = Column(Vector(384)) # Assuming 384 dimensions for bge-small-en
+    full_text_search = Column(TSVECTOR)
     
     document = relationship("Document", back_populates="chunks")
