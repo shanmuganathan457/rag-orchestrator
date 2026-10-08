@@ -8,35 +8,51 @@ from app.providers.factory import get_embedding
 
 router = APIRouter()
 
+MAX_FILE_SIZE = 10 * 1024 * 1024 # 10 MB
+
 @router.post("/", response_model=DocumentResponse)
 async def upload_document(
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
-    # 1. Read content
+    # 1. Validate file type and size
+    allowed_types = ["application/pdf", "text/plain", "text/markdown"]
+    if file.content_type not in allowed_types and not file.filename.lower().endswith((".pdf", ".txt", ".md", ".markdown")):
+        raise HTTPException(status_code=400, detail="Unsupported file type")
+        
     content = await file.read()
-    text = content.decode("utf-8") # Basic txt support for now
-    
-    # 2. Save Document to DB
-    db_doc = Document(filename=file.filename, file_type=file.content_type, content=text)
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="File size exceeds 10MB limit")
+        
+    # 2. Extract and Chunk
+    try:
+        chunks_info = ingestion_service.process_document(content, file.content_type, file.filename)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
+
+    if not chunks_info:
+        raise HTTPException(status_code=400, detail="No extractable text found in document")
+        
+    # 3. Save Document to DB
+    db_doc = Document(filename=file.filename, file_type=file.content_type)
     db.add(db_doc)
     db.commit()
     db.refresh(db_doc)
     
-    # 3. Chunking
-    chunks = ingestion_service.process_document(text)
-    
-    # 4. Create chunks in DB
+    # 4. Generate embeddings and create chunks in DB
     try:
         embedding_provider = get_embedding()
-        embeddings = await embedding_provider.embed_batch(chunks)
+        chunk_texts = [info.content for info in chunks_info]
+        embeddings = await embedding_provider.embed_batch(chunk_texts)
         
-        for i, chunk_text in enumerate(chunks):
+        for i, info in enumerate(chunks_info):
             db_chunk = DocumentChunk(
                 document_id=db_doc.id,
-                content=chunk_text,
+                content=info.content,
                 embedding=embeddings[i],
-                page_num=1 # Placeholder for page tracking
+                page_num=info.page_num
             )
             db.add(db_chunk)
             
@@ -44,7 +60,7 @@ async def upload_document(
     except Exception as e:
         db.delete(db_doc)
         db.commit()
-        raise HTTPException(status_code=500, detail=f"Error processing chunks: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generating embeddings or saving chunks: {str(e)}")
         
     return db_doc
 
