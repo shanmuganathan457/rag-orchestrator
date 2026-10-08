@@ -9,12 +9,3 @@ class LLMProvider(ABC):
     @abstractmethod
     async def generate(self, prompt: str, context: List[str], **kwargs) -> str:
         pass
-
-class EmbeddingProvider(ABC):
-    @abstractmethod
-    async def embed_text(self, text: str) -> List[float]:
-        pass
-        
-    @abstractmethod
-    async def embed_batch(self, texts: List[str]) -> List[List[float]]:
-        pass

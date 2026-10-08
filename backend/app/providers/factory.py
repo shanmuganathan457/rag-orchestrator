@@ -1,4 +1,6 @@
-from app.providers.base import LLMProvider, EmbeddingProvider
+from app.providers.llm.base import LLMProvider
+from app.providers.embeddings.base import EmbeddingProvider
+from app.providers.embeddings.fastembed_provider import FastEmbedProvider
 
 class ProviderFactory:
     _llm_provider: LLMProvider | None = None
@@ -21,7 +23,8 @@ class ProviderFactory:
     @classmethod
     def get_embedding_provider(cls) -> EmbeddingProvider:
         if not cls._embedding_provider:
-            raise ValueError("Embedding Provider not configured")
+            # Default to FastEmbed
+            cls._embedding_provider = FastEmbedProvider()
         return cls._embedding_provider
 
 def get_llm() -> LLMProvider:

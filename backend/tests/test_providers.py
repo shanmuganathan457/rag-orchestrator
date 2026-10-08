@@ -1,6 +1,7 @@
 import pytest
 from app.providers.factory import ProviderFactory
-from app.providers.base import LLMProvider, EmbeddingProvider
+from app.providers.llm.base import LLMProvider
+from app.providers.embeddings.base import EmbeddingProvider
 
 class MockLLM(LLMProvider):
     async def generate_stream(self, prompt, context, **kwargs):
