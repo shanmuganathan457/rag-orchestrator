@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     KEYWORD_TOP_K: int = Field(default=20, ge=1, le=200)
     RRF_K: int = Field(default=60, ge=1, le=1000)
     FINAL_TOP_K: int = Field(default=5, ge=1, le=100)
+    EMBEDDING_MODEL: str = "BAAI/bge-small-en-v1.5"
     EMBEDDING_DIMENSION: int = Field(default=384, ge=1)
 
     @property
