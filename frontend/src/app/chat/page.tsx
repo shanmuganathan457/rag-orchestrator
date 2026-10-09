@@ -32,40 +32,26 @@ export default function ChatPage() {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let done = false;
-
-      while (!done) {
-        const { value, done: doneReading } = await reader.read();
-        done = doneReading;
-        const chunkValue = decoder.decode(value);
-
-        // Parse SSE
-        const lines = chunkValue.split('\n');
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') {
-              setIsGenerating(false);
-              break;
-            }
-            if (data.startsWith('[ERROR]')) {
-              console.error(data);
-              setIsGenerating(false);
-              break;
-            }
-            
-            setMessages((prev) => {
-              const newMessages = [...prev];
-              const lastMessage = newMessages[newMessages.length - 1];
-              if (lastMessage.role === "assistant") {
-                lastMessage.content += data;
-              }
-              return newMessages;
-            });
-          }
+      let buffer = "";
+      while (true) {
+        const { value, done } = await reader.read();
+        buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
+        const events = buffer.split("\n\n");
+        buffer = events.pop() ?? "";
+        for (const event of events) {
+          const name = event.match(/^event: (.+)$/m)?.[1];
+          const raw = event.match(/^data: (.+)$/m)?.[1];
+          if (!name || !raw) continue;
+          try {
+            const payload = JSON.parse(raw);
+            if (name === "token") setMessages((prev) => { const copy = [...prev]; copy[copy.length - 1].content += payload.text ?? ""; return copy; });
+            if (name === "error") { console.error(payload.message); setIsGenerating(false); }
+            if (name === "done") setIsGenerating(false);
+          } catch { console.error("Malformed chat stream event"); }
         }
+        if (done) break;
       }
-    } catch (error) {
+      setIsGenerating(false);    } catch (error) {
       console.error("Error fetching stream:", error);
       setIsGenerating(false);
     }
