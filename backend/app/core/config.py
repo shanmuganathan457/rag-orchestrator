@@ -17,6 +17,12 @@ class Settings(BaseSettings):
     KEYWORD_TOP_K: int = Field(default=20, ge=1, le=200)
     RRF_K: int = Field(default=60, ge=1, le=1000)
     FINAL_TOP_K: int = Field(default=5, ge=1, le=100)
+    LLM_PROVIDER: str = "ollama"
+    LLM_MODEL: str = "llama3.2:3b"
+    LLM_BASE_URL: str = "http://localhost:11434/v1"
+    LLM_API_KEY: str | None = None
+    BLOCK_PRIVATE_LLM_URLS: bool = False
+
     EMBEDDING_MODEL: str = "BAAI/bge-small-en-v1.5"
     EMBEDDING_DIMENSION: int = Field(default=384, ge=1)
 
