@@ -19,8 +19,8 @@ type EvaluationDetail = {
 };
 
 type EvaluationResult = {
-  total_evaluated: int;
-  top_k: int;
+  total_evaluated: number;
+  top_k: number;
   summary: Record<string, ModeMetrics>;
   details: EvaluationDetail[];
 };
