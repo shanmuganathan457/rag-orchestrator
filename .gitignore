@@ -1,2 +1,19 @@
 docmind-referance/
 docmind-reference/
+
+# secrets
+.env
+
+# python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# node
+frontend/node_modules/
+frontend/.next/
+frontend/tsconfig.tsbuildinfo
+
+# misc
+*.log

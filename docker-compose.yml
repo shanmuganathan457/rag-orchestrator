@@ -19,14 +19,18 @@ services:
 
   backend:
     build: ./backend
-    volumes:
-      - ./backend:/app
+    env_file:
+      - .env
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-raguser}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-ragpass}
       - POSTGRES_SERVER=db
       - POSTGRES_PORT=5432
       - POSTGRES_DB=${POSTGRES_DB:-ragdb}
+      - CORS_ORIGINS=http://localhost:3000
+      - OLLAMA_URL=http://host.docker.internal:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "8000:8000"
     depends_on:
@@ -34,10 +38,12 @@ services:
         condition: service_healthy
 
   frontend:
-    build: ./frontend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
     ports:
       - "3000:3000"
     depends_on:
