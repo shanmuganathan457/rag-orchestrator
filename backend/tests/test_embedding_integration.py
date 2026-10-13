@@ -54,7 +54,7 @@ async def test_upload_uses_configured_embedding_provider_and_attaches_vectors(mo
 
     document = await documents.upload_document(Upload(), db)
 
-    assert document.id == 42
+    assert document["id"] == 42
     assert db.committed
     assert [chunk.embedding for chunk in db.added_many] == [[0.1] * 384, [0.2] * 384]
     assert db.added_many[1].page_num == 2
