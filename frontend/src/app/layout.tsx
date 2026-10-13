@@ -1,22 +1,15 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
-
 export const metadata: Metadata = {
-  title: "RAG Orchestrator",
-  description: "Advanced RAG platform",
+  title: "RAG Orchestrator · Chat with your documents",
+  description: "Retrieval-augmented Q&A with hybrid search, citations and a built-in evaluation dashboard.",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body className="font-sans antialiased">{children}</body>
     </html>
   );
 }

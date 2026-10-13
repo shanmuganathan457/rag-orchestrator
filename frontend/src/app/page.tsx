@@ -1,38 +1,64 @@
 "use client";
-import { useEffect, useState } from "react";
+
+import { useCallback, useEffect, useState } from "react";
+import Chat from "./components/Chat";
+import Evaluation from "./components/Evaluation";
+import Sidebar from "./components/Sidebar";
+import { Doc, Health, getHealth, listDocs } from "./lib/api";
 
 export default function Home() {
-  const [health, setHealth] = useState<string>("Checking...");
+  const [docs, setDocs] = useState<Doc[]>([]);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [health, setHealth] = useState<Health | null>(null);
+  const [tab, setTab] = useState<"chat" | "eval">("chat");
 
-  useEffect(() => {
-    fetch("http://localhost:8000/api/v1/health")
-      .then((res) => res.json())
-      .then((data) => setHealth(data.status === "ok" ? "Connected" : "Error"))
-      .catch(() => setHealth("Disconnected"));
+  const refresh = useCallback(async () => {
+    try {
+      const d = await listDocs();
+      setDocs(d);
+      setSelected((s) => new Set(Array.from(s).filter((id) => d.some((x) => x.id === id))));
+    } catch {
+      /* API not reachable yet; health indicator shows it */
+    }
   }, []);
 
+  useEffect(() => {
+    refresh();
+    getHealth().then(setHealth).catch(() => setHealth(null));
+  }, [refresh]);
+
+  const toggle = (id: number) =>
+    setSelected((s) => {
+      const next = new Set(s);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24 bg-gray-50">
-      <div className="z-10 max-w-5xl w-full items-center justify-center font-mono text-sm flex">
-        <div className="flex flex-col items-center gap-4">
-          <h1 className="text-4xl font-bold text-gray-900">RAG Orchestrator</h1>
-          <p className="text-lg text-gray-600">Advanced Retrieval-Augmented Generation Platform</p>
-          <div className="flex flex-wrap justify-center gap-4 mt-2">
-            <a href="/chat" className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition">
-              RAG Chat
-            </a>
-            <a href="/evaluation" className="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition">
-              Evaluation Dashboard
-            </a>
-            <a href="/settings/providers" className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300 transition">
-              Provider Settings
-            </a>
-          </div>
-          <div className="mt-8 px-4 py-2 bg-white rounded-lg shadow-sm border border-gray-200">
-            Backend Status: <span className={health === "Connected" ? "text-green-600 font-bold" : "text-red-600 font-bold"}>{health}</span>
-          </div>
+    <div className="flex h-screen">
+      <Sidebar docs={docs} selected={selected} health={health} onToggle={toggle} onChanged={refresh} />
+      <main className="flex min-w-0 flex-1 flex-col">
+        <nav className="flex gap-1 border-b border-ink-700 px-6 pt-3">
+          {(["chat", "eval"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`rounded-t-lg px-4 py-2 text-sm font-medium transition ${
+                tab === t ? "border-b-2 border-accent text-accent-soft" : "text-zinc-500 hover:text-zinc-300"
+              }`}
+            >
+              {t === "chat" ? "Chat" : "Evaluation"}
+            </button>
+          ))}
+        </nav>
+        <div className="min-h-0 flex-1">
+          {tab === "chat" ? (
+            <Chat docIds={selected.size ? Array.from(selected) : null} hasDocs={docs.length > 0} />
+          ) : (
+            <Evaluation hasDocs={docs.length > 0} />
+          )}
         </div>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }
