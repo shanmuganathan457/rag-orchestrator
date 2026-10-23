@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Chat from "./components/Chat";
 import Evaluation from "./components/Evaluation";
+import Settings from "./components/Settings";
 import Sidebar from "./components/Sidebar";
 import { Doc, Health, getHealth, listDocs } from "./lib/api";
 
@@ -11,6 +12,10 @@ export default function Home() {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [health, setHealth] = useState<Health | null>(null);
   const [tab, setTab] = useState<"chat" | "eval">("chat");
+  const [showSettings, setShowSettings] = useState(false);
+
+  const refreshHealth = useCallback(() =>
+    getHealth().then(setHealth).catch(() => setHealth(null)), []);
 
   const refresh = useCallback(async () => {
     try {
@@ -24,8 +29,8 @@ export default function Home() {
 
   useEffect(() => {
     refresh();
-    getHealth().then(setHealth).catch(() => setHealth(null));
-  }, [refresh]);
+    refreshHealth();
+  }, [refresh, refreshHealth]);
 
   const toggle = (id: number) =>
     setSelected((s) => {
@@ -36,7 +41,20 @@ export default function Home() {
 
   return (
     <div className="flex h-screen">
-      <Sidebar docs={docs} selected={selected} health={health} onToggle={toggle} onChanged={refresh} />
+      {showSettings && (
+        <Settings
+          onClose={() => setShowSettings(false)}
+          onSwitched={() => { setShowSettings(false); refreshHealth(); }}
+        />
+      )}
+      <Sidebar
+        docs={docs}
+        selected={selected}
+        health={health}
+        onToggle={toggle}
+        onChanged={refresh}
+        onSettings={() => setShowSettings(true)}
+      />
       <main className="flex min-w-0 flex-1 flex-col">
         <nav className="flex gap-1 border-b border-ink-700 px-6 pt-3">
           {(["chat", "eval"] as const).map((t) => (

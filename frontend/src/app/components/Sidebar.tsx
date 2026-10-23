@@ -9,9 +9,10 @@ type Props = {
   health: Health | null;
   onToggle: (id: number) => void;
   onChanged: () => void;
+  onSettings: () => void;
 };
 
-export default function Sidebar({ docs, selected, health, onToggle, onChanged }: Props) {
+export default function Sidebar({ docs, selected, health, onToggle, onChanged, onSettings }: Props) {
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -112,18 +113,27 @@ export default function Sidebar({ docs, selected, health, onToggle, onChanged }:
         ))}
       </ul>
 
-      <div className="border-t border-ink-700 px-5 py-3 text-xs text-zinc-500">
-        {health ? (
-          <span>
-            <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            {health.llm_provider} · <span className="font-mono">{health.llm_model}</span>
-          </span>
-        ) : (
-          <span>
-            <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-red-400" />
-            API unreachable
-          </span>
-        )}
+      <div className="border-t border-ink-700 px-5 py-3 text-xs text-zinc-500 flex items-center justify-between">
+        <span>
+          {health ? (
+            <span>
+              <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              {health.llm_provider} · <span className="font-mono">{health.llm_model}</span>
+            </span>
+          ) : (
+            <span>
+              <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-red-400" />
+              API unreachable
+            </span>
+          )}
+        </span>
+        <button
+          onClick={onSettings}
+          title="LLM Provider Settings"
+          className="rounded-lg p-1.5 text-zinc-500 transition hover:bg-ink-800 hover:text-zinc-200"
+        >
+          ⚙
+        </button>
       </div>
     </aside>
   );
