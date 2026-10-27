@@ -63,8 +63,8 @@ def _split_sentences(text: str) -> List[str]:
 def _make_chunks(
     text: str,
     page_num: Optional[int] = None,
-    chunk_size: int = 900,
-    chunk_overlap: int = 150,
+    chunk_size: int = 1500,
+    chunk_overlap: int = 200,
 ) -> List[DocumentChunkInfo]:
     """Sentence-aware chunking with overlap."""
     sentences = _split_sentences(text)
