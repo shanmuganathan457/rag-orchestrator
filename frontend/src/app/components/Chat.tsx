@@ -11,24 +11,33 @@ const SUGGESTIONS = [
 
 function Answer({ text, sources, streaming }: { text: string; sources?: Source[]; streaming: boolean }) {
   const [open, setOpen] = useState<number | null>(null);
-  const parts = text.split(/(\[\d+\])/g);
+
+  // Clean up stray "[n]\n." patterns before rendering
+  const cleaned = text
+    .replace(/(\[\d+\])\s*\n+\s*([.!?,])/g, '$1$2')   // [n]\n. → [n].
+    .replace(/([.!?])\s+(\[\d+\])\s*([.!?]?)/g, (_, p, ref, ep) => ` ${ref}${p}${ep}`); // .[n] → [n].
+
+  const parts = cleaned.split(/(\[\d+\])/g);
+
   return (
     <div>
-      <p className={`whitespace-pre-wrap leading-relaxed ${streaming ? "caret" : ""}`}>
+      <p className={`leading-relaxed ${streaming ? "caret" : ""}`} style={{ whiteSpace: "pre-wrap" }}>
         {parts.map((p, i) => {
           const m = /^\[(\d+)\]$/.exec(p);
           if (!m) return <Fragment key={i}>{p}</Fragment>;
           const n = Number(m[1]);
           const exists = sources?.some((s) => s.n === n);
           return (
-            <button
-              key={i}
-              disabled={!exists}
-              onClick={() => setOpen(open === n ? null : n)}
-              className="mx-0.5 rounded bg-accent/15 px-1.5 py-0.5 align-baseline font-mono text-xs text-accent hover:bg-accent/25 disabled:opacity-40"
-            >
-              {n}
-            </button>
+            <sup key={i} className="inline">
+              <button
+                disabled={!exists}
+                onClick={() => setOpen(open === n ? null : n)}
+                className="mx-0.5 rounded bg-accent/20 px-1 py-0 align-super font-mono text-[10px] leading-none text-accent hover:bg-accent/35 disabled:opacity-30 transition"
+                title={exists ? `Source ${n}` : undefined}
+              >
+                {n}
+              </button>
+            </sup>
           );
         })}
       </p>
@@ -44,7 +53,7 @@ function Answer({ text, sources, streaming }: { text: string; sources?: Source[]
                   : "border-ink-600 text-zinc-400 hover:border-zinc-500"
               }`}
             >
-              <span className="font-mono text-accent">{s.n}</span> {s.doc_name} · p.{s.page}
+              <span className="font-mono text-accent">[{s.n}]</span> {s.doc_name}{s.page ? ` · p.${s.page}` : ""}
             </button>
           ))}
         </div>
@@ -53,13 +62,14 @@ function Answer({ text, sources, streaming }: { text: string; sources?: Source[]
         <blockquote className="mt-3 rounded-lg border-l-2 border-accent bg-ink-800 p-3 text-sm leading-relaxed text-zinc-300">
           {sources.find((s) => s.n === open)!.snippet}
           <div className="mt-2 font-mono text-xs text-zinc-500">
-            relevance {sources.find((s) => s.n === open)!.score}
+            relevance score: {sources.find((s) => s.n === open)!.score.toFixed(3)}
           </div>
         </blockquote>
       )}
     </div>
   );
 }
+
 
 export default function Chat({ docIds, hasDocs }: { docIds: number[] | null; hasDocs: boolean }) {
   const [messages, setMessages] = useState<Msg[]>([]);

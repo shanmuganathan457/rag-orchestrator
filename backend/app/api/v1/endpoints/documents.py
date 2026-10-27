@@ -10,9 +10,15 @@ from app.providers.factory import get_embedding
 from app.services.ingestion import ingestion_service
 
 router = APIRouter()
-MAX_FILE_SIZE = 25 * 1024 * 1024  # 25MB to match reference
-ALLOWED_SUFFIXES = (".pdf", ".txt", ".md", ".markdown")
-ALLOWED_TYPES = {"application/pdf", "text/plain", "text/markdown"}
+MAX_FILE_SIZE = 25 * 1024 * 1024  # 25 MB
+ALLOWED_SUFFIXES = (".pdf", ".txt", ".md", ".markdown", ".csv", ".docx")
+ALLOWED_TYPES = {
+    "application/pdf",
+    "text/plain",
+    "text/markdown",
+    "text/csv",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+}
 
 
 def _doc_to_dict(doc: Document, db: Session, pages: int = 0, chunks: int = 0) -> dict:
@@ -45,7 +51,10 @@ def list_documents(db: Session = Depends(get_db)):
 async def upload_document(file: UploadFile = File(...), db: Session = Depends(get_db)):
     filename = file.filename or ""
     if file.content_type not in ALLOWED_TYPES and not filename.lower().endswith(ALLOWED_SUFFIXES):
-        raise HTTPException(status_code=400, detail="Unsupported file type. Upload a PDF, TXT or MD file.")
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported file type. Upload a PDF, TXT, MD, CSV or DOCX file.",
+        )
 
     content = await file.read()
     if len(content) > MAX_FILE_SIZE:

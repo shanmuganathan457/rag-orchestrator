@@ -60,7 +60,7 @@ export default function Sidebar({ docs, selected, health, onToggle, onChanged, o
           <input
             ref={input}
             type="file"
-            accept=".pdf,.txt,.md"
+            accept=".pdf,.txt,.md,.csv,.docx"
             multiple
             hidden
             onChange={(e) => handleFiles(e.target.files)}
@@ -70,7 +70,7 @@ export default function Sidebar({ docs, selected, health, onToggle, onChanged, o
           ) : (
             <>
               <div className="font-medium">Drop files or click to upload</div>
-              <div className="mt-1 text-xs text-zinc-500">PDF, TXT or MD</div>
+              <div className="mt-1 text-xs text-zinc-500">PDF · TXT · MD · CSV · DOCX</div>
             </>
           )}
         </div>
