@@ -156,3 +156,21 @@ export async function* streamChat(
     }
   }
 }
+
+/* ── Visualization Studio API ─────────────────────────── */
+
+export type CsvFileInfo = { id: number; name: string; created_at: string | null };
+export type DatasetPayload = {
+  id: number;
+  name: string;
+  columns: string[];
+  rows: Record<string, string | number>[];
+};
+
+export const listCsvFiles = () =>
+  fetch(`${API}/api/v1/visualization/csv-files`).then((r) => json<CsvFileInfo[]>(r));
+
+export const getVisualizationData = (ids: number[]) =>
+  fetch(`${API}/api/v1/visualization/data?ids=${ids.join(",")}`).then((r) =>
+    json<{ datasets: DatasetPayload[] }>(r)
+  );

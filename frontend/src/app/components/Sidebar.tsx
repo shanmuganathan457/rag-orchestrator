@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { Doc, Health, deleteDoc, uploadDoc } from "../lib/api";
+import { useVisualization } from "../context/VisualizationContext";
 
 type Props = {
   docs: Doc[];
@@ -11,6 +12,23 @@ type Props = {
   onChanged: () => void;
   onSettings: () => void;
 };
+
+function DataStudioButton() {
+  const { showStudio, setShowStudio } = useVisualization();
+  return (
+    <button
+      onClick={() => setShowStudio(!showStudio)}
+      title={showStudio ? "Close Data Studio" : "Open Data Studio"}
+      className={`rounded-lg p-1.5 transition ${
+        showStudio
+          ? "bg-accent/15 text-accent"
+          : "text-zinc-500 hover:bg-ink-800 hover:text-zinc-200"
+      }`}
+    >
+      📊
+    </button>
+  );
+}
 
 export default function Sidebar({ docs, selected, health, onToggle, onChanged, onSettings }: Props) {
   const input = useRef<HTMLInputElement>(null);
@@ -127,13 +145,16 @@ export default function Sidebar({ docs, selected, health, onToggle, onChanged, o
             </span>
           )}
         </span>
-        <button
-          onClick={onSettings}
-          title="LLM Provider Settings"
-          className="rounded-lg p-1.5 text-zinc-500 transition hover:bg-ink-800 hover:text-zinc-200"
-        >
-          ⚙
-        </button>
+        <div className="flex items-center gap-1">
+          <DataStudioButton />
+          <button
+            onClick={onSettings}
+            title="LLM Provider Settings"
+            className="rounded-lg p-1.5 text-zinc-500 transition hover:bg-ink-800 hover:text-zinc-200"
+          >
+            ⚙
+          </button>
+        </div>
       </div>
     </aside>
   );
