@@ -1,14 +1,18 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
+export type GraphState = {
+  id: string;
+  chartType: 'bar' | 'line' | 'scatter';
+  visibleColumns?: string[];
+  title?: string;
+};
+
 export type TabState = {
   id: string;
   name: string;
-  datasets: number[]; // document IDs of uploaded CSV files
+  datasets: number[];
   notes: string;
-  chartConfig: {
-    type: 'bar' | 'line' | 'scatter';
-    title?: string;
-  };
+  graphs: GraphState[];
 };
 
 type VisualizationContextProps = {
@@ -36,20 +40,21 @@ export const VisualizationProvider = ({ children }: { children: ReactNode }) => 
   const [tabs, setTabs] = useState<TabState[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
 
-  // optional persistence
   useEffect(() => {
-    const stored = localStorage.getItem('visualization_state');
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      setShowStudio(parsed.showStudio);
-      setTabs(parsed.tabs);
-      setActiveTabId(parsed.activeTabId);
-    }
+    try {
+      const stored = localStorage.getItem('visualization_state_v2');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setShowStudio(parsed.showStudio);
+        setTabs(parsed.tabs);
+        setActiveTabId(parsed.activeTabId);
+      }
+    } catch { /* ignore corrupt state */ }
   }, []);
 
   useEffect(() => {
     const payload = { showStudio, tabs, activeTabId };
-    localStorage.setItem('visualization_state', JSON.stringify(payload));
+    localStorage.setItem('visualization_state_v2', JSON.stringify(payload));
   }, [showStudio, tabs, activeTabId]);
 
   const addTab = () => {
@@ -59,7 +64,7 @@ export const VisualizationProvider = ({ children }: { children: ReactNode }) => 
       name: `Sheet ${tabs.length + 1}`,
       datasets: [],
       notes: '',
-      chartConfig: { type: 'bar' },
+      graphs: [{ id: `g-${newId}`, chartType: 'bar' }],
     };
     setTabs(prev => [...prev, newTab]);
     setActiveTabId(newId);

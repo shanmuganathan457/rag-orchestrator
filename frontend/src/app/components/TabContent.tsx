@@ -1,23 +1,20 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useVisualization } from "../context/VisualizationContext";
+import { useVisualization, GraphState } from "../context/VisualizationContext";
 import { CsvFileInfo, DatasetPayload, listCsvFiles, getVisualizationData } from "../lib/api";
-import ChartCard from "./ChartCard";
+import GraphBlock from "./GraphBlock";
 import ExportToolbar from "./ExportToolbar";
-import AiChartChat from "./AiChartChat";
 
 export default function TabContent() {
   const { tabs, activeTabId, updateTab } = useVisualization();
   const activeTab = tabs.find((t) => t.id === activeTabId);
   const contentRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<HTMLDivElement>(null);
 
   const [csvFiles, setCsvFiles] = useState<CsvFileInfo[]>([]);
   const [datasets, setDatasets] = useState<DatasetPayload[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [visibleColumns, setVisibleColumns] = useState<string[] | undefined>(undefined);
 
   useEffect(() => {
     listCsvFiles().then(setCsvFiles).catch(() => setCsvFiles([]));
@@ -31,10 +28,7 @@ export default function TabContent() {
     setLoading(true);
     setError(null);
     getVisualizationData(activeTab.datasets)
-      .then((r) => {
-        setDatasets(r.datasets);
-        setVisibleColumns(undefined); // reset on dataset change
-      })
+      .then((r) => setDatasets(r.datasets))
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
   }, [activeTab?.datasets]);
@@ -52,6 +46,30 @@ export default function TabContent() {
     const current = activeTab.datasets;
     const next = current.includes(id) ? current.filter((d) => d !== id) : [...current, id];
     updateTab(activeTab.id, { datasets: next });
+  }
+
+  function addGraph() {
+    if (!activeTab) return;
+    const newGraph: GraphState = {
+      id: `g-${Date.now()}`,
+      chartType: "bar",
+    };
+    updateTab(activeTab.id, { graphs: [...activeTab.graphs, newGraph] });
+  }
+
+  function updateGraph(graphId: string, upd: Partial<GraphState>) {
+    if (!activeTab) return;
+    const updated = activeTab.graphs.map((g) =>
+      g.id === graphId ? { ...g, ...upd } : g
+    );
+    updateTab(activeTab.id, { graphs: updated });
+  }
+
+  function deleteGraph(graphId: string) {
+    if (!activeTab) return;
+    updateTab(activeTab.id, {
+      graphs: activeTab.graphs.filter((g) => g.id !== graphId),
+    });
   }
 
   // Merge datasets
@@ -100,7 +118,7 @@ export default function TabContent() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      {/* Top bar: dataset selector + export */}
+      {/* Top bar */}
       <div className="flex items-center justify-between border-b border-ink-700 px-4 py-2">
         <div className="flex items-center gap-2 overflow-x-auto">
           <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider shrink-0">Datasets:</span>
@@ -122,18 +140,16 @@ export default function TabContent() {
           ))}
         </div>
         <ExportToolbar
-          targetRef={contentRef}
-          chartRef={chartRef}
+          contentRef={contentRef}
           tabName={activeTab.name}
-          data={mergedData}
-          columns={mergedColumns}
+          graphs={activeTab.graphs}
           notes={activeTab.notes}
           datasetNames={datasets.map((d) => d.name)}
         />
       </div>
 
       {/* Scrollable content */}
-      <div ref={contentRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div ref={contentRef} className="flex-1 overflow-y-auto p-4 space-y-6">
         {loading && (
           <div className="flex items-center justify-center py-12">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent border-t-transparent" />
@@ -141,49 +157,37 @@ export default function TabContent() {
         )}
 
         {error && (
-          <div className="rounded-lg bg-red-950 px-4 py-3 text-sm text-red-400">
-            {error}
-          </div>
+          <div className="rounded-lg bg-red-950 px-4 py-3 text-sm text-red-400">{error}</div>
         )}
 
+        {/* Graph blocks */}
         {!loading && !error && mergedData.length > 0 && (
-          <div ref={chartRef} data-chart>
-            <ChartCard
-              data={mergedData}
-              columns={mergedColumns}
-              chartType={activeTab.chartConfig.type}
-              title={
-                datasets.length === 1
-                  ? datasets[0].name
-                  : `Merged: ${datasets.map((d) => d.name).join(" + ")}`
-              }
-              onChartTypeChange={(t) => updateTab(activeTab.id, { chartConfig: { ...activeTab.chartConfig, type: t } })}
-              visibleColumns={visibleColumns}
-              onVisibleColumnsChange={setVisibleColumns}
-            />
-          </div>
+          <>
+            {activeTab.graphs.map((graph) => (
+              <GraphBlock
+                key={graph.id}
+                graph={graph}
+                data={mergedData}
+                columns={mergedColumns}
+                allSeriesKeys={allSeriesKeys}
+                onUpdate={(upd) => updateGraph(graph.id, upd)}
+                onDelete={() => deleteGraph(graph.id)}
+                canDelete={activeTab.graphs.length > 1}
+              />
+            ))}
+
+            {/* Add graph button */}
+            <button
+              onClick={addGraph}
+              className="w-full rounded-xl border-2 border-dashed border-ink-600 py-4 text-sm text-zinc-500 transition hover:border-accent hover:text-accent flex items-center justify-center gap-2"
+            >
+              <span className="text-lg leading-none">+</span> Add another graph
+            </button>
+          </>
         )}
 
         {!loading && !error && mergedData.length === 0 && activeTab.datasets.length > 0 && (
           <p className="text-sm text-zinc-500 py-8 text-center">No data rows found in selected files.</p>
-        )}
-
-        {/* AI Chart Chat */}
-        {!loading && mergedData.length > 0 && (
-          <AiChartChat
-            columns={mergedColumns}
-            allSeriesKeys={allSeriesKeys}
-            currentChartType={activeTab.chartConfig.type}
-            currentVisibleColumns={visibleColumns || allSeriesKeys}
-            onApplyConfig={(cfg) => {
-              if (cfg.chartType) {
-                updateTab(activeTab.id, { chartConfig: { ...activeTab.chartConfig, type: cfg.chartType } });
-              }
-              if (cfg.visibleColumns) {
-                setVisibleColumns(cfg.visibleColumns);
-              }
-            }}
-          />
         )}
 
         {/* Notes section */}
@@ -208,9 +212,7 @@ export default function TabContent() {
                 <thead className="sticky top-0 bg-ink-800">
                   <tr>
                     {mergedColumns.map((col) => (
-                      <th key={col} className="px-3 py-2 text-left font-medium text-zinc-400 whitespace-nowrap">
-                        {col}
-                      </th>
+                      <th key={col} className="px-3 py-2 text-left font-medium text-zinc-400 whitespace-nowrap">{col}</th>
                     ))}
                   </tr>
                 </thead>
@@ -218,9 +220,7 @@ export default function TabContent() {
                   {mergedData.slice(0, 50).map((row, i) => (
                     <tr key={i} className="border-t border-ink-700/50 hover:bg-ink-800/80 transition">
                       {mergedColumns.map((col) => (
-                        <td key={col} className="px-3 py-1.5 text-zinc-400 whitespace-nowrap">
-                          {row[col] ?? ""}
-                        </td>
+                        <td key={col} className="px-3 py-1.5 text-zinc-400 whitespace-nowrap">{row[col] ?? ""}</td>
                       ))}
                     </tr>
                   ))}

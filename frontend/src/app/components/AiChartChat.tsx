@@ -127,7 +127,7 @@ Rules:
   }
 
   return (
-    <div className="rounded-xl border border-ink-700 bg-ink-800/50 overflow-hidden">
+    <div data-no-export className="rounded-xl border border-ink-700 bg-ink-800/50 overflow-hidden">
       <div className="px-3 py-2 border-b border-ink-700 flex items-center gap-2">
         <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">🤖 AI Chart Assistant</span>
         <span className="text-[10px] text-zinc-600">Ask to customize columns, chart type, or analyze data</span>
