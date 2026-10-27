@@ -5,23 +5,24 @@ import { useVisualization } from "../context/VisualizationContext";
 import { CsvFileInfo, DatasetPayload, listCsvFiles, getVisualizationData } from "../lib/api";
 import ChartCard from "./ChartCard";
 import ExportToolbar from "./ExportToolbar";
+import AiChartChat from "./AiChartChat";
 
 export default function TabContent() {
   const { tabs, activeTabId, updateTab } = useVisualization();
   const activeTab = tabs.find((t) => t.id === activeTabId);
   const contentRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<HTMLDivElement>(null);
 
   const [csvFiles, setCsvFiles] = useState<CsvFileInfo[]>([]);
   const [datasets, setDatasets] = useState<DatasetPayload[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [visibleColumns, setVisibleColumns] = useState<string[] | undefined>(undefined);
 
-  // Fetch available CSV files
   useEffect(() => {
     listCsvFiles().then(setCsvFiles).catch(() => setCsvFiles([]));
   }, []);
 
-  // Fetch data whenever selected datasets change
   useEffect(() => {
     if (!activeTab || activeTab.datasets.length === 0) {
       setDatasets([]);
@@ -30,7 +31,10 @@ export default function TabContent() {
     setLoading(true);
     setError(null);
     getVisualizationData(activeTab.datasets)
-      .then((r) => setDatasets(r.datasets))
+      .then((r) => {
+        setDatasets(r.datasets);
+        setVisibleColumns(undefined); // reset on dataset change
+      })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
   }, [activeTab?.datasets]);
@@ -50,7 +54,7 @@ export default function TabContent() {
     updateTab(activeTab.id, { datasets: next });
   }
 
-  // Merge all datasets into a single data array for combined charts
+  // Merge datasets
   const mergedData: Record<string, string | number>[] = [];
   const mergedColumns: string[] = [];
 
@@ -58,7 +62,6 @@ export default function TabContent() {
     mergedData.push(...datasets[0].rows);
     mergedColumns.push(...datasets[0].columns);
   } else if (datasets.length > 1) {
-    // Merge strategy: combine columns, align by row index
     const allCols = new Set<string>();
     datasets.forEach((d) => d.columns.forEach((c) => allCols.add(c)));
     mergedColumns.push(...Array.from(allCols));
@@ -69,7 +72,6 @@ export default function TabContent() {
       datasets.forEach((d) => {
         if (d.rows[i]) {
           Object.entries(d.rows[i]).forEach(([k, v]) => {
-            // For multi-file, prefix column names with filename to avoid collision
             const colKey = datasets.length > 1 && d.columns.indexOf(k) > 0
               ? `${d.name.replace(/\.csv$/i, "")}_${k}`
               : k;
@@ -80,7 +82,6 @@ export default function TabContent() {
       mergedData.push(row);
     }
 
-    // Rebuild columns with prefixed names for series columns
     if (datasets.length > 1) {
       mergedColumns.length = 0;
       const firstXCol = datasets[0]?.columns[0] || "x";
@@ -93,9 +94,13 @@ export default function TabContent() {
     }
   }
 
+  const allSeriesKeys = mergedColumns.slice(1).filter((c) =>
+    mergedData.some((row) => typeof row[c] === "number")
+  );
+
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      {/* Top: Export + dataset selector */}
+      {/* Top bar: dataset selector + export */}
       <div className="flex items-center justify-between border-b border-ink-700 px-4 py-2">
         <div className="flex items-center gap-2 overflow-x-auto">
           <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider shrink-0">Datasets:</span>
@@ -116,7 +121,15 @@ export default function TabContent() {
             </button>
           ))}
         </div>
-        <ExportToolbar targetRef={contentRef} tabName={activeTab.name} />
+        <ExportToolbar
+          targetRef={contentRef}
+          chartRef={chartRef}
+          tabName={activeTab.name}
+          data={mergedData}
+          columns={mergedColumns}
+          notes={activeTab.notes}
+          datasetNames={datasets.map((d) => d.name)}
+        />
       </div>
 
       {/* Scrollable content */}
@@ -134,21 +147,43 @@ export default function TabContent() {
         )}
 
         {!loading && !error && mergedData.length > 0 && (
-          <ChartCard
-            data={mergedData}
-            columns={mergedColumns}
-            chartType={activeTab.chartConfig.type}
-            title={
-              datasets.length === 1
-                ? datasets[0].name
-                : `Merged: ${datasets.map((d) => d.name).join(" + ")}`
-            }
-            onChartTypeChange={(t) => updateTab(activeTab.id, { chartConfig: { ...activeTab.chartConfig, type: t } })}
-          />
+          <div ref={chartRef} data-chart>
+            <ChartCard
+              data={mergedData}
+              columns={mergedColumns}
+              chartType={activeTab.chartConfig.type}
+              title={
+                datasets.length === 1
+                  ? datasets[0].name
+                  : `Merged: ${datasets.map((d) => d.name).join(" + ")}`
+              }
+              onChartTypeChange={(t) => updateTab(activeTab.id, { chartConfig: { ...activeTab.chartConfig, type: t } })}
+              visibleColumns={visibleColumns}
+              onVisibleColumnsChange={setVisibleColumns}
+            />
+          </div>
         )}
 
         {!loading && !error && mergedData.length === 0 && activeTab.datasets.length > 0 && (
           <p className="text-sm text-zinc-500 py-8 text-center">No data rows found in selected files.</p>
+        )}
+
+        {/* AI Chart Chat */}
+        {!loading && mergedData.length > 0 && (
+          <AiChartChat
+            columns={mergedColumns}
+            allSeriesKeys={allSeriesKeys}
+            currentChartType={activeTab.chartConfig.type}
+            currentVisibleColumns={visibleColumns || allSeriesKeys}
+            onApplyConfig={(cfg) => {
+              if (cfg.chartType) {
+                updateTab(activeTab.id, { chartConfig: { ...activeTab.chartConfig, type: cfg.chartType } });
+              }
+              if (cfg.visibleColumns) {
+                setVisibleColumns(cfg.visibleColumns);
+              }
+            }}
+          />
         )}
 
         {/* Notes section */}
