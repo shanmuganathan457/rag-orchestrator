@@ -8,9 +8,17 @@ const PROVIDERS = ["ollama", "gemini", "groq", "openrouter", "openai-compatible"
 const DEFAULT_MODELS: Record<string, string> = {
   ollama: "llama3.2:latest",
   gemini: "gemini-2.0-flash",
-  groq: "llama-3.3-70b-versatile",
+  groq: "llama3-8b-8192",
   openrouter: "openai/gpt-4o-mini",
   "openai-compatible": "gpt-4o-mini",
+};
+
+const MODEL_HINTS: Record<string, string> = {
+  groq: "Free: llama3-8b-8192 · llama3-70b-8192 · mixtral-8x7b-32768 · llama-3.1-8b-instant",
+  gemini: "Free: gemini-2.0-flash · gemini-1.5-flash · gemini-1.5-pro",
+  openrouter: "e.g. openai/gpt-4o-mini · anthropic/claude-3-haiku · meta-llama/llama-3-8b-instruct",
+  "openai-compatible": "Any OpenAI-compatible model name",
+  ollama: "Run \`ollama list\` to see your local models",
 };
 
 const NEEDS_KEY = ["gemini", "groq", "openrouter", "openai-compatible"];
@@ -113,9 +121,12 @@ export default function Settings({ onClose, onSwitched }: { onClose: () => void;
             <input
               value={model}
               onChange={(e) => setModel(e.target.value)}
-              placeholder="e.g. llama3.2:latest"
+              placeholder="e.g. llama3-8b-8192"
               className="w-full rounded-lg border border-ink-700 bg-ink-800 px-3 py-2 text-sm outline-none transition focus:border-accent"
             />
+            {MODEL_HINTS[provider] && (
+              <p className="mt-1 text-xs text-zinc-500">{MODEL_HINTS[provider]}</p>
+            )}
           </div>
 
           {/* API Key */}
