@@ -88,3 +88,4 @@ def graph_ingest(chunk_id: int, text: str) -> None:
         logger.debug("Graph ingest OK – chunk %s, %d entities", chunk_id, len(entities))
     except Exception as exc:
         logger.warning("Graph ingest failed for chunk %s: %s", chunk_id, exc)
+

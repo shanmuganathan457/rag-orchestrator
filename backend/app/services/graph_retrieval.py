@@ -82,3 +82,4 @@ async def get_graph_context(query: str, hops: int = 2, top_k: int = 10) -> str:
         return ""
 
     return "Related entities from knowledge graph: " + ", ".join(parts)
+
