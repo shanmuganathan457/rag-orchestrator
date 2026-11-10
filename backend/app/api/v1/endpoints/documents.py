@@ -7,6 +7,7 @@ from app.db.session import get_db
 from app.models.document import Document, DocumentChunk
 from app.providers.embeddings.base import validate_embedding_batch
 from app.providers.factory import get_embedding
+from app.services.graph_ingest import graph_ingest
 from app.services.ingestion import ingestion_service
 
 router = APIRouter()
@@ -96,6 +97,18 @@ async def upload_document(file: UploadFile = File(...), db: Session = Depends(ge
         )
         db.commit()
         db.refresh(db_doc)
+
+        # Wire GraphRAG ingestion: extract entities → Neo4j (no-op when USE_GRAPH_RAG=False)
+        if settings.USE_GRAPH_RAG:
+            saved_chunks = (
+                db.query(DocumentChunk)
+                .filter(DocumentChunk.document_id == db_doc.id)
+                .order_by(DocumentChunk.id)
+                .all()
+            )
+            for chunk in saved_chunks:
+                graph_ingest(chunk_id=chunk.id, text=chunk.content)
+
     except Exception as exc:
         db.rollback()
         raise HTTPException(status_code=500, detail="Error saving document") from exc
