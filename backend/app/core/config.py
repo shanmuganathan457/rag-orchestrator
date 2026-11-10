@@ -25,6 +25,11 @@ class Settings(BaseSettings):
 
     EMBEDDING_MODEL: str = "BAAI/bge-small-en-v1.5"
     EMBEDDING_DIMENSION: int = Field(default=384, ge=1)
+    # ----- GraphRAG toggle & Neo4j connection (free community) -----
+    USE_GRAPH_RAG: bool = False
+    NEO4J_URI: str = "bolt://localhost:7687"
+    NEO4J_USER: str = "neo4j"
+    NEO4J_PASSWORD: str = "securepassword"
 
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:

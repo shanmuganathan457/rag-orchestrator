@@ -15,6 +15,21 @@ services:
       timeout: 5s
       retries: 5
 
+  neo4j:
+    image: neo4j:community
+    environment:
+      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-securepassword}
+    ports:
+      - "7474:7474"   # Neo4j browser UI (http://localhost:7474)
+      - "7687:7687"   # Bolt protocol for the Python driver
+    volumes:
+      - neo4jdata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   backend:
     build: ./backend
     env_file:
@@ -27,12 +42,18 @@ services:
       - POSTGRES_DB=${POSTGRES_DB:-ragdb}
       - CORS_ORIGINS=http://localhost:3000
       - OLLAMA_URL=http://host.docker.internal:11434
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=${NEO4J_USER:-neo4j}
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD:-securepassword}
+      - USE_GRAPH_RAG=${USE_GRAPH_RAG:-false}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
       - "8000:8000"
     depends_on:
       db:
+        condition: service_healthy
+      neo4j:
         condition: service_healthy
 
   frontend:
@@ -49,3 +70,4 @@ services:
 
 volumes:
   pgdata:
+  neo4jdata:

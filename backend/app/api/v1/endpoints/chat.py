@@ -15,6 +15,7 @@ router = APIRouter()
 class ChatRequest(BaseModel):
     query: str
     document_ids: Optional[List[int]] = None
+    use_graph: bool = False  # Toggle between normal RAG and GraphRAG
 
 
 def sse_event(name: str, payload: dict) -> str:
@@ -25,7 +26,9 @@ def sse_event(name: str, payload: dict) -> str:
 async def chat(request: ChatRequest, db: Session = Depends(get_db)):
     async def event_generator():
         try:
-            async for name, payload in rag_orchestrator.chat_events(db, request.query, request.document_ids):
+            async for name, payload in rag_orchestrator.chat_events(
+                db, request.query, request.document_ids, use_graph=request.use_graph
+            ):
                 yield sse_event(name, payload)
         except Exception:
             yield sse_event("error", {"message": "Chat generation failed"})

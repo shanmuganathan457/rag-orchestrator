@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session
 
 from app.providers.factory import get_llm
 from app.services.retrieval import RetrievalResult, retrieval_service
+from app.core.config import settings
+
 
 CITATION_PATTERN = re.compile(r"\[(\d+)\]")
 NO_CONTEXT_MESSAGE = "No relevant information was found in the uploaded documents."
@@ -64,7 +66,11 @@ def source_payload(index: int, result: RetrievalResult) -> dict:
 
 class RAGOrchestrator:
     async def chat_events(
-        self, db: Session, query: str, document_ids: Sequence[int] | None = None
+        self,
+        db: Session,
+        query: str,
+        document_ids: Sequence[int] | None = None,
+        use_graph: bool = False,
     ) -> AsyncGenerator[tuple[str, dict], None]:
         results = await retrieval_service.retrieve_results(db, query, document_ids)
         sources = [source_payload(i, r) for i, r in enumerate(results, start=1)]
@@ -75,11 +81,26 @@ class RAGOrchestrator:
             yield "done", {"citation_validation": validate_citations(NO_CONTEXT_MESSAGE, 0)}
             return
 
-        context = "\n\n".join(
+        vector_context = "\n\n".join(
             f"[{i}]" + (f" (Page {r.page})" if r.page else "") + f": {r.text}"
             for i, r in enumerate(results, start=1)
         )
-        prompt = f"Context:\n{context}\n\nQuestion: {query}"
+
+        # --- GraphRAG: fuse vector context with graph context ---
+        if use_graph and settings.USE_GRAPH_RAG:
+            try:
+                from app.services.graph_retrieval import get_graph_context
+                graph_ctx = await get_graph_context(query)
+                prompt = (
+                    f"Vector Context:\n{vector_context}\n\n"
+                    f"Graph Context:\n{graph_ctx}\n\n"
+                    f"Question: {query}"
+                )
+            except Exception:
+                # Fall back to plain RAG if graph is unavailable
+                prompt = f"Context:\n{vector_context}\n\nQuestion: {query}"
+        else:
+            prompt = f"Context:\n{vector_context}\n\nQuestion: {query}"
 
         answer = ""
         async for token in get_llm().generate_stream(prompt, [SYSTEM_PROMPT]):

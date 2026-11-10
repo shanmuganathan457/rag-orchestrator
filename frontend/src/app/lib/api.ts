@@ -98,13 +98,14 @@ export async function* streamChat(
   question: string,
   history: { role: string; content: string }[],
   docIds: number[] | null,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  useGraph: boolean = false
 ): AsyncGenerator<ChatEvent> {
   const res = await fetch(`${API}/api/v1/chat/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     // Backend field is document_ids (not doc_ids)
-    body: JSON.stringify({ query: question, history, document_ids: docIds }),
+    body: JSON.stringify({ query: question, history, document_ids: docIds, use_graph: useGraph }),
     signal,
   });
   if (!res.ok || !res.body) throw new Error(`Chat failed (${res.status})`);

@@ -15,6 +15,7 @@ export default function Home() {
   const [health, setHealth] = useState<Health | null>(null);
   const [tab, setTab] = useState<"chat" | "eval">("chat");
   const [showSettings, setShowSettings] = useState(false);
+  const [useGraph, setUseGraph] = useState(false);
 
   const refreshHealth = useCallback(() =>
     getHealth().then(setHealth).catch(() => setHealth(null)), []);
@@ -48,6 +49,8 @@ export default function Home() {
           <Settings
             onClose={() => setShowSettings(false)}
             onSwitched={() => { setShowSettings(false); refreshHealth(); }}
+            useGraph={useGraph}
+            onToggleGraph={setUseGraph}
           />
         )}
         <Sidebar
@@ -79,7 +82,7 @@ export default function Home() {
           </nav>
           <div className="min-h-0 flex-1">
             {tab === "chat" ? (
-              <Chat docIds={selected.size ? Array.from(selected) : null} hasDocs={docs.length > 0} />
+              <Chat docIds={selected.size ? Array.from(selected) : null} hasDocs={docs.length > 0} useGraph={useGraph} />
             ) : (
               <Evaluation hasDocs={docs.length > 0} />
             )}

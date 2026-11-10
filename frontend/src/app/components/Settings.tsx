@@ -18,7 +18,12 @@ const NEEDS_URL = ["ollama", "openai-compatible"];
 
 type Status = { ok: boolean; msg: string } | null;
 
-export default function Settings({ onClose, onSwitched }: { onClose: () => void; onSwitched: () => void }) {
+export default function Settings({ onClose, onSwitched, useGraph, onToggleGraph }: {
+  onClose: () => void;
+  onSwitched: () => void;
+  useGraph: boolean;
+  onToggleGraph: (v: boolean) => void;
+}) {
   const [info, setInfo] = useState<ProviderInfo | null>(null);
   const [provider, setProvider] = useState("ollama");
   const [model, setModel] = useState("llama3.2:latest");
@@ -171,6 +176,31 @@ export default function Settings({ onClose, onSwitched }: { onClose: () => void;
           <p className="text-center text-xs text-zinc-500">
             Connection is tested before switching. No restart needed.
           </p>
+
+          {/* ── GraphRAG Toggle ──────────────────────────────── */}
+          <div className="mt-2 flex items-center justify-between rounded-xl border border-ink-700 bg-ink-800 px-4 py-3">
+            <div>
+              <p className="text-sm font-medium text-zinc-200">GraphRAG Mode</p>
+              <p className="text-xs text-zinc-500">
+                {useGraph
+                  ? "Knowledge graph + vector search (richer multi-hop reasoning)"
+                  : "Standard vector RAG (fast, no graph)"}
+              </p>
+            </div>
+            <button
+              onClick={() => onToggleGraph(!useGraph)}
+              className={`relative ml-4 h-6 w-11 flex-shrink-0 rounded-full transition-colors focus:outline-none ${
+                useGraph ? "bg-accent" : "bg-zinc-700"
+              }`}
+              aria-label="Toggle GraphRAG"
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                  useGraph ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </div>
         </div>
       </div>
     </div>

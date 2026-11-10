@@ -71,7 +71,7 @@ function Answer({ text, sources, streaming }: { text: string; sources?: Source[]
 }
 
 
-export default function Chat({ docIds, hasDocs }: { docIds: number[] | null; hasDocs: boolean }) {
+export default function Chat({ docIds, hasDocs, useGraph = false }: { docIds: number[] | null; hasDocs: boolean; useGraph?: boolean }) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -93,7 +93,7 @@ export default function Chat({ docIds, hasDocs }: { docIds: number[] | null; has
       setMessages((all) => all.map((m, i) => (i === all.length - 1 ? fn(m) : m)));
 
     try {
-      for await (const ev of streamChat(question, history, docIds, abort.current.signal)) {
+      for await (const ev of streamChat(question, history, docIds, abort.current.signal, useGraph)) {
         if (ev.type === "sources") patch((m) => ({ ...m, sources: ev.data }));
         else if (ev.type === "token") patch((m) => ({ ...m, content: m.content + ev.data }));
         else if (ev.type === "error") patch((m) => ({ ...m, error: ev.data }));
@@ -117,6 +117,11 @@ export default function Chat({ docIds, hasDocs }: { docIds: number[] | null; has
               <p className="mx-auto mt-2 max-w-md text-sm text-zinc-400">
                 Answers are generated only from your documents and link back to the exact page.
               </p>
+              {/* RAG mode badge */}
+              <span className={`mt-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${useGraph ? "bg-violet-900/60 text-violet-300" : "bg-zinc-800 text-zinc-400"}`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${useGraph ? "bg-violet-400" : "bg-zinc-500"}`} />
+                {useGraph ? "GraphRAG mode" : "Standard RAG mode"}
+              </span>
               {hasDocs && (
                 <div className="mt-6 flex flex-wrap justify-center gap-2">
                   {SUGGESTIONS.map((s) => (
