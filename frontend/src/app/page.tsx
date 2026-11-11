@@ -76,18 +76,16 @@ function MainApp() {
             onChanged={refresh}
             onSettings={() => setShowSettings(true)}
             onCloseSidebar={() => setSidebarOpen(false)}
+            showStudio={showStudio}
           />
         </div>
       </div>
 
-      {/* Visualization studio (collapsible pane) */}
-      <VisualizationStudio />
-
       {/* Main content area */}
       <main className="flex min-w-0 flex-1 flex-col bg-ink-950">
-        {/* Professional Top Navigation Bar */}
+        {/* Top Navigation Bar */}
         <header className="flex h-14 shrink-0 items-center justify-between border-b border-ink-700/80 bg-ink-900/60 px-4 backdrop-blur-md">
-          {/* Left section: Sidebar toggle + App Brand (when collapsed) */}
+          {/* Left section: Sidebar toggle + App Brand (when sidebar collapsed) */}
           <div className="flex items-center gap-3">
             {!sidebarOpen && (
               <button
@@ -116,9 +114,12 @@ function MainApp() {
             {/* Navigation Tabs */}
             <nav className="flex items-center gap-1">
               <button
-                onClick={() => setTab("chat")}
+                onClick={() => {
+                  setShowStudio(false);
+                  setTab("chat");
+                }}
                 className={`relative flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-medium transition ${
-                  tab === "chat"
+                  !showStudio && tab === "chat"
                     ? "bg-accent/15 text-accent shadow-sm"
                     : "text-zinc-400 hover:bg-ink-800 hover:text-zinc-200"
                 }`}
@@ -135,15 +136,18 @@ function MainApp() {
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                 </svg>
                 <span>Chat</span>
-                {tab === "chat" && (
+                {!showStudio && tab === "chat" && (
                   <span className="absolute -bottom-[9px] left-3 right-3 h-[2px] rounded-full bg-accent" />
                 )}
               </button>
 
               <button
-                onClick={() => setTab("eval")}
+                onClick={() => {
+                  setShowStudio(false);
+                  setTab("eval");
+                }}
                 className={`relative flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-medium transition ${
-                  tab === "eval"
+                  !showStudio && tab === "eval"
                     ? "bg-accent/15 text-accent shadow-sm"
                     : "text-zinc-400 hover:bg-ink-800 hover:text-zinc-200"
                 }`}
@@ -160,7 +164,7 @@ function MainApp() {
                   <path d="M12 20v-6M6 20V10M18 20V4" />
                 </svg>
                 <span>Evaluation</span>
-                {tab === "eval" && (
+                {!showStudio && tab === "eval" && (
                   <span className="absolute -bottom-[9px] left-3 right-3 h-[2px] rounded-full bg-accent" />
                 )}
               </button>
@@ -168,10 +172,10 @@ function MainApp() {
               {/* Data Studio Toggle Tab */}
               <button
                 onClick={() => setShowStudio(!showStudio)}
-                title={showStudio ? "Close Data Studio panel" : "Open Data Studio panel"}
+                title={showStudio ? "Back to Chat / Evaluation" : "Open Data Studio"}
                 className={`relative flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
                   showStudio
-                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300 shadow-sm"
+                    ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300 shadow-sm"
                     : "border-transparent text-zinc-400 hover:border-ink-700 hover:bg-ink-800 hover:text-zinc-200"
                 }`}
               >
@@ -198,7 +202,7 @@ function MainApp() {
             </nav>
           </div>
 
-          {/* Right section: Graph mode status / quick settings */}
+          {/* Right section: Graph mode status (settings icon removed per request) */}
           <div className="flex items-center gap-2">
             <span
               className={`hidden sm:inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition ${
@@ -214,33 +218,14 @@ function MainApp() {
               />
               {useGraph ? "GraphRAG" : "Vector RAG"}
             </span>
-
-            {/* Quick Settings Button on Top Bar */}
-            <button
-              onClick={() => setShowSettings(true)}
-              title="Settings"
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-ink-700 bg-ink-800/80 text-zinc-400 transition hover:border-zinc-500 hover:bg-ink-700 hover:text-zinc-100"
-              aria-label="Settings"
-            >
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                viewBox="0 0 24 24"
-              >
-                <circle cx="12" cy="12" r="3" />
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-              </svg>
-            </button>
           </div>
         </header>
 
-        {/* Content body */}
-        <div className="min-h-0 flex-1">
-          {tab === "chat" ? (
+        {/* Content body: When Data Studio is open, it occupies the whole right-hand frame */}
+        <div className="flex min-h-0 flex-1 overflow-hidden">
+          {showStudio ? (
+            <VisualizationStudio />
+          ) : tab === "chat" ? (
             <Chat docIds={selected.size ? Array.from(selected) : null} hasDocs={docs.length > 0} useGraph={useGraph} />
           ) : (
             <Evaluation hasDocs={docs.length > 0} />

@@ -15,20 +15,19 @@ export default function VisualizationStudio() {
   }
 
   return (
-    <div
-      className="flex h-full flex-col border-r border-ink-700 bg-ink-950 transition-all duration-300"
-      style={{ width: "50%", minWidth: 400 }}
-    >
+    <div className="flex h-full w-full flex-col bg-ink-950">
       {/* Studio header */}
-      <div className="flex items-center justify-between border-b border-ink-700 px-4 py-2">
-        <h2 className="text-sm font-semibold text-zinc-200 flex items-center gap-2">
-          <span className="flex h-6 w-6 items-center justify-center rounded-md bg-accent/15 text-xs text-accent">📊</span>
+      <div className="flex h-12 shrink-0 items-center justify-between border-b border-ink-700/80 bg-ink-900/40 px-4">
+        <h2 className="text-xs font-semibold text-zinc-200 flex items-center gap-2">
+          <span className="flex h-5 w-5 items-center justify-center rounded bg-emerald-500/15 text-[11px] text-emerald-400">
+            📊
+          </span>
           Data Studio
         </h2>
         <button
           onClick={() => setShowStudio(false)}
-          className="rounded-lg p-1.5 text-zinc-500 hover:bg-ink-800 hover:text-zinc-200 transition text-sm"
-          title="Close studio"
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-400 hover:bg-ink-800 hover:text-zinc-100 transition text-xs"
+          title="Close Data Studio"
         >
           ✕
         </button>
@@ -38,7 +37,7 @@ export default function VisualizationStudio() {
       <TabBar />
 
       {/* Active tab content */}
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 overflow-auto">
         <TabContent />
       </div>
     </div>

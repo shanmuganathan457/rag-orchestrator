@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Doc, Health, deleteDoc, uploadDoc } from "../lib/api";
 
 type Props = {
@@ -11,13 +11,39 @@ type Props = {
   onChanged: () => void;
   onSettings: () => void;
   onCloseSidebar?: () => void;
+  /** When true, only show Data Studio compatible files (CSV, JSON, etc.) */
+  showStudio?: boolean;
 };
 
-export default function Sidebar({ docs, selected, health, onToggle, onChanged, onSettings, onCloseSidebar }: Props) {
+export default function Sidebar({
+  docs,
+  selected,
+  health,
+  onToggle,
+  onChanged,
+  onSettings,
+  onCloseSidebar,
+  showStudio,
+}: Props) {
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [drag, setDrag] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
+
+  // Filter docs for Data Studio view (CSV, JSON, etc.) and search query
+  const displayedDocs = useMemo(() => {
+    let list = docs;
+    if (showStudio) {
+      list = list.filter((d) => /\.(csv|json|xlsx?|tsv)$/i.test(d.name));
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter((d) => d.name.toLowerCase().includes(q));
+    }
+    return list;
+  }, [docs, showStudio, searchQuery]);
 
   async function handleFiles(files: FileList | null) {
     if (!files?.length) return;
@@ -36,83 +62,166 @@ export default function Sidebar({ docs, selected, health, onToggle, onChanged, o
 
   return (
     <aside className="flex h-full w-80 shrink-0 flex-col border-r border-ink-700 bg-ink-900 select-none">
-      {/* Header */}
-      <div className="px-5 pb-4 pt-5">
+      {/* Header with ChatGPT style branding & icons */}
+      <div className="px-4 pb-3 pt-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/15 font-mono text-sm font-semibold text-accent shadow-inner">
-              dm
+          <div className="flex items-center gap-2">
+            {/* ChatGPT style spark / spiral logo */}
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-800 text-zinc-100 shadow-sm border border-zinc-700/60">
+              <svg
+                className="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z" />
+                <path d="M12 6a6 6 0 0 0-6 6c0 2 1.5 3.5 3.5 3.5H14" />
+                <path d="M12 10a2 2 0 1 1-2 2" />
+              </svg>
             </div>
-            <h1 className="text-base font-semibold tracking-tight text-zinc-100">RAG Orchestrator</h1>
+            <h1 className="text-sm font-semibold tracking-tight text-zinc-100">RAG Orchestrator</h1>
           </div>
-          {/* Collapse sidebar button */}
-          <button
-            onClick={onCloseSidebar}
-            title="Collapse sidebar"
-            className="group flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-ink-800 hover:text-zinc-100"
-            aria-label="Collapse sidebar"
-          >
-            <svg
-              className="h-4 w-4 transition-transform group-hover:-translate-x-0.5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              viewBox="0 0 24 24"
+
+          <div className="flex items-center gap-1">
+            {/* Search toggle icon (ChatGPT style) */}
+            <button
+              onClick={() => setShowSearch(!showSearch)}
+              title="Search files"
+              className={`flex h-7 w-7 items-center justify-center rounded-md transition ${
+                showSearch
+                  ? "bg-ink-800 text-zinc-100"
+                  : "text-zinc-400 hover:bg-ink-800 hover:text-zinc-200"
+              }`}
+              aria-label="Search files"
             >
-              <rect width="18" height="18" x="3" y="3" rx="2" />
-              <path d="M9 3v18" />
-              <path d="m14 9-3 3 3 3" />
-            </svg>
-          </button>
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                viewBox="0 0 24 24"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+            </button>
+
+            {/* Collapse sidebar icon (ChatGPT style sidebar toggle) */}
+            <button
+              onClick={onCloseSidebar}
+              title="Close sidebar"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 transition hover:bg-ink-800 hover:text-zinc-200"
+              aria-label="Close sidebar"
+            >
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                viewBox="0 0 24 24"
+              >
+                <rect width="18" height="18" x="3" y="3" rx="2" />
+                <path d="M9 3v18" />
+              </svg>
+            </button>
+          </div>
         </div>
-        <p className="mt-2 text-xs leading-relaxed text-zinc-400">
-          Ask questions about your documents. Every answer cites its sources.
-        </p>
+
+        {/* Expandable search bar */}
+        {showSearch && (
+          <div className="mt-2.5">
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={showStudio ? "Search data files (CSV, JSON)..." : "Search all files..."}
+                className="w-full rounded-md border border-ink-700 bg-ink-950 px-2.5 py-1.5 text-xs text-zinc-200 placeholder-zinc-500 focus:border-accent focus:outline-none"
+                autoFocus
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2 top-1.5 text-xs text-zinc-400 hover:text-zinc-200"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="px-5">
+      {/* Upload Zone */}
+      <div className="px-4">
         <div
-          onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDrag(true);
+          }}
           onDragLeave={() => setDrag(false)}
-          onDrop={(e) => { e.preventDefault(); setDrag(false); handleFiles(e.dataTransfer.files); }}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDrag(false);
+            handleFiles(e.dataTransfer.files);
+          }}
           onClick={() => input.current?.click()}
-          className={`cursor-pointer rounded-xl border border-dashed p-5 text-center text-sm transition ${
+          className={`cursor-pointer rounded-xl border border-dashed p-3.5 text-center text-xs transition ${
             drag ? "border-accent bg-accent/10" : "border-ink-600 hover:border-zinc-500"
           }`}
         >
           <input
             ref={input}
             type="file"
-            accept=".pdf,.txt,.md,.csv,.docx"
+            accept=".pdf,.txt,.md,.csv,.docx,.json"
             multiple
             hidden
             onChange={(e) => handleFiles(e.target.files)}
           />
           {busy ? (
-            <span className="text-accent-soft">Indexing… (chunking + embedding)</span>
+            <span className="text-accent-soft font-medium">Indexing… (chunking + embedding)</span>
           ) : (
             <>
-              <div className="font-medium">Drop files or click to upload</div>
-              <div className="mt-1 text-xs text-zinc-500">PDF · TXT · MD · CSV · DOCX</div>
+              <div className="font-medium text-zinc-200">Drop files or click to upload</div>
+              <div className="mt-1 text-[11px] text-zinc-500">
+                {showStudio ? "CSV · JSON · XLSX" : "PDF · TXT · MD · CSV · DOCX"}
+              </div>
             </>
           )}
         </div>
         {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
       </div>
 
-      <div className="mt-5 flex items-center justify-between px-5 text-xs uppercase tracking-wider text-zinc-500">
-        <span>Documents ({docs.length})</span>
+      {/* Documents section label */}
+      <div className="mt-4 flex items-center justify-between px-4 text-[11px] uppercase tracking-wider text-zinc-500">
+        <span>
+          {showStudio ? "Data Studio Files" : "Documents"} ({displayedDocs.length})
+        </span>
         <span>{selected.size ? `${selected.size} selected` : "searching all"}</span>
       </div>
 
+      {/* File list */}
       <ul className="mt-2 flex-1 space-y-1 overflow-y-auto px-3 pb-3">
-        {docs.length === 0 && <li className="px-2 py-6 text-center text-sm text-zinc-500">No documents yet.</li>}
-        {docs.map((d) => (
+        {displayedDocs.length === 0 && (
+          <li className="px-2 py-6 text-center text-xs text-zinc-500">
+            {searchQuery
+              ? "No matching files found."
+              : showStudio
+              ? "No data files (CSV/JSON) found."
+              : "No documents yet."}
+          </li>
+        )}
+        {displayedDocs.map((d) => (
           <li
             key={d.id}
-            className={`group flex items-start gap-3 rounded-lg px-2 py-2 transition hover:bg-ink-800 ${
+            className={`group flex items-start gap-2.5 rounded-lg px-2 py-2 transition hover:bg-ink-800 ${
               selected.has(d.id) ? "bg-ink-800" : ""
             }`}
           >
@@ -124,12 +233,19 @@ export default function Sidebar({ docs, selected, health, onToggle, onChanged, o
               aria-label={`Limit search to ${d.name}`}
             />
             <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-medium" title={d.name}>{d.name}</div>
-              <div className="text-xs text-zinc-500">{d.pages} pages · {d.chunks} chunks</div>
+              <div className="truncate text-xs font-medium text-zinc-200" title={d.name}>
+                {d.name}
+              </div>
+              <div className="text-[10px] text-zinc-500">
+                {d.pages} pages · {d.chunks} chunks
+              </div>
             </div>
             <button
-              onClick={async () => { await deleteDoc(d.id); onChanged(); }}
-              className="text-xs text-zinc-600 opacity-0 transition hover:text-red-400 group-hover:opacity-100"
+              onClick={async () => {
+                await deleteDoc(d.id);
+                onChanged();
+              }}
+              className="text-[11px] text-zinc-600 opacity-0 transition hover:text-red-400 group-hover:opacity-100"
               aria-label={`Delete ${d.name}`}
             >
               delete
@@ -139,7 +255,7 @@ export default function Sidebar({ docs, selected, health, onToggle, onChanged, o
       </ul>
 
       {/* Footer / Status */}
-      <div className="border-t border-ink-700/80 bg-ink-950/40 px-4 py-3 text-xs text-zinc-400 flex items-center justify-between">
+      <div className="border-t border-ink-700/80 bg-ink-950/40 px-3.5 py-2.5 text-xs text-zinc-400 flex items-center justify-between">
         <span className="truncate pr-2">
           {health ? (
             <span className="flex items-center gap-2">
@@ -147,34 +263,36 @@ export default function Sidebar({ docs, selected, health, onToggle, onChanged, o
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
               </span>
-              <span className="truncate">
+              <span className="truncate text-xs">
                 {health.llm_provider} · <span className="font-mono text-zinc-300">{health.llm_model}</span>
               </span>
             </span>
           ) : (
-            <span className="flex items-center gap-2">
+            <span className="flex items-center gap-2 text-xs">
               <span className="h-2 w-2 rounded-full bg-red-400" />
               <span>API unreachable</span>
             </span>
           )}
         </span>
+
+        {/* Clean setting button matching top bar size with no animation */}
         <button
           onClick={onSettings}
-          title="LLM Provider & GraphRAG Settings"
-          className="group relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-ink-700 bg-ink-800/80 text-zinc-400 shadow-sm transition hover:border-zinc-500 hover:bg-ink-700 hover:text-zinc-100"
+          title="Settings"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-ink-700 bg-ink-800/80 text-zinc-400 transition hover:border-zinc-500 hover:bg-ink-700 hover:text-zinc-100"
           aria-label="Settings"
         >
           <svg
-            className="h-4.5 w-4.5 transition-transform duration-300 group-hover:rotate-45"
+            className="h-4 w-4"
             fill="none"
             stroke="currentColor"
-            strokeWidth="1.75"
+            strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
             viewBox="0 0 24 24"
           >
-            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
             <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
           </svg>
         </button>
       </div>
