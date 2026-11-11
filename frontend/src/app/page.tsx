@@ -4,10 +4,21 @@ import { useCallback, useEffect, useState } from "react";
 import Chat from "./components/Chat";
 import Evaluation from "./components/Evaluation";
 import Settings from "./components/Settings";
-import Sidebar from "./components/Sidebar";
+import Sidebar, { ChatSession } from "./components/Sidebar";
 import VisualizationStudio from "./components/VisualizationStudio";
 import { VisualizationProvider, useVisualization } from "./context/VisualizationContext";
-import { Doc, Health, getHealth, listDocs } from "./lib/api";
+import { Doc, Health, Msg, getHealth, listDocs } from "./lib/api";
+
+const CHAT_STORAGE_KEY = "rag_orchestrator_chat_sessions_v1";
+
+function createNewSession(): ChatSession {
+  return {
+    id: `chat_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+    title: "New Chat",
+    updatedAt: Date.now(),
+    messages: [],
+  };
+}
 
 function MainApp() {
   const [docs, setDocs] = useState<Doc[]>([]);
@@ -17,8 +28,97 @@ function MainApp() {
   const [showSettings, setShowSettings] = useState(false);
   const [useGraph, setUseGraph] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarTab, setSidebarTab] = useState<"docs" | "chats">("docs");
+
+  // Persistent Chat Sessions state
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string>("");
 
   const { showStudio, setShowStudio } = useVisualization();
+
+  // Load chat sessions from localStorage on initial mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(CHAT_STORAGE_KEY);
+      if (stored) {
+        const parsed: ChatSession[] = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setSessions(parsed);
+          setActiveSessionId(parsed[0].id);
+          return;
+        }
+      }
+    } catch {
+      /* ignore storage parse errors */
+    }
+    const initial = createNewSession();
+    setSessions([initial]);
+    setActiveSessionId(initial.id);
+  }, []);
+
+  // Save sessions to localStorage when updated
+  useEffect(() => {
+    if (sessions.length > 0) {
+      try {
+        localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(sessions));
+      } catch {
+        /* storage full or unavailable */
+      }
+    }
+  }, [sessions]);
+
+  // Active session and its messages
+  const activeSession = sessions.find((s) => s.id === activeSessionId) || sessions[0];
+  const activeMessages = activeSession ? activeSession.messages : [];
+
+  const handleUpdateMessages: React.Dispatch<React.SetStateAction<Msg[]>> = (action) => {
+    setSessions((prevSessions) => {
+      return prevSessions.map((s) => {
+        if (s.id !== (activeSession?.id ?? activeSessionId)) return s;
+        const newMessages = typeof action === "function" ? action(s.messages) : action;
+
+        // Auto-generate a title from the first user query if still "New Chat"
+        let newTitle = s.title;
+        if ((!s.title || s.title === "New Chat") && newMessages.length > 0) {
+          const firstUser = newMessages.find((m) => m.role === "user");
+          if (firstUser && firstUser.content.trim()) {
+            newTitle = firstUser.content.slice(0, 36).trim() + (firstUser.content.length > 36 ? "…" : "");
+          }
+        }
+
+        return {
+          ...s,
+          messages: newMessages,
+          title: newTitle,
+          updatedAt: Date.now(),
+        };
+      });
+    });
+  };
+
+  const handleNewSession = () => {
+    const fresh = createNewSession();
+    setSessions((prev) => [fresh, ...prev]);
+    setActiveSessionId(fresh.id);
+    setSidebarTab("chats");
+    setShowStudio(false);
+    setTab("chat");
+  };
+
+  const handleDeleteSession = (idToDelete: string) => {
+    setSessions((prev) => {
+      const filtered = prev.filter((s) => s.id !== idToDelete);
+      if (filtered.length === 0) {
+        const fresh = createNewSession();
+        setActiveSessionId(fresh.id);
+        return [fresh];
+      }
+      if (activeSessionId === idToDelete) {
+        setActiveSessionId(filtered[0].id);
+      }
+      return filtered;
+    });
+  };
 
   const refreshHealth = useCallback(
     () => getHealth().then(setHealth).catch(() => setHealth(null)),
@@ -77,14 +177,25 @@ function MainApp() {
             onSettings={() => setShowSettings(true)}
             onCloseSidebar={() => setSidebarOpen(false)}
             showStudio={showStudio}
+            sessions={sessions}
+            activeSessionId={activeSession?.id ?? activeSessionId}
+            onSelectSession={(id) => {
+              setActiveSessionId(id);
+              setShowStudio(false);
+              setTab("chat");
+            }}
+            onNewSession={handleNewSession}
+            onDeleteSession={handleDeleteSession}
+            sidebarTab={sidebarTab}
+            onSetSidebarTab={setSidebarTab}
           />
         </div>
       </div>
 
-      {/* Main content area */}
+      {/* Main content area - takes full remaining width */}
       <main className="flex min-w-0 flex-1 flex-col bg-ink-950">
         {/* Top Navigation Bar */}
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-ink-700/80 bg-ink-900/60 px-4 backdrop-blur-md">
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-ink-700/80 bg-ink-900/60 px-4 sm:px-6 backdrop-blur-md">
           {/* Left section: Sidebar toggle + App Brand (when sidebar collapsed) */}
           <div className="flex items-center gap-3">
             {!sidebarOpen && (
@@ -202,7 +313,7 @@ function MainApp() {
             </nav>
           </div>
 
-          {/* Right section: Graph mode status (settings icon removed per request) */}
+          {/* Right section: Graph mode status */}
           <div className="flex items-center gap-2">
             <span
               className={`hidden sm:inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition ${
@@ -221,15 +332,41 @@ function MainApp() {
           </div>
         </header>
 
-        {/* Content body: When Data Studio is open, it occupies the whole right-hand frame */}
-        <div className="flex min-h-0 flex-1 overflow-hidden">
-          {showStudio ? (
+        {/* Content body: Preserves chat messages when toggling tabs! */}
+        <div className="relative flex min-h-0 flex-1 overflow-hidden">
+          {/* Data Studio View */}
+          <div
+            className={`absolute inset-0 h-full w-full ${
+              showStudio ? "block z-10" : "hidden pointer-events-none"
+            }`}
+          >
             <VisualizationStudio />
-          ) : tab === "chat" ? (
-            <Chat docIds={selected.size ? Array.from(selected) : null} hasDocs={docs.length > 0} useGraph={useGraph} />
-          ) : (
+          </div>
+
+          {/* Chat View - kept alive in DOM to maintain messages & state */}
+          <div
+            className={`absolute inset-0 h-full w-full ${
+              !showStudio && tab === "chat" ? "block z-10" : "hidden pointer-events-none"
+            }`}
+          >
+            <Chat
+              docIds={selected.size ? Array.from(selected) : null}
+              hasDocs={docs.length > 0}
+              useGraph={useGraph}
+              messages={activeMessages}
+              setMessages={handleUpdateMessages}
+              onNewSession={handleNewSession}
+            />
+          </div>
+
+          {/* Evaluation View - kept alive in DOM */}
+          <div
+            className={`absolute inset-0 h-full w-full ${
+              !showStudio && tab === "eval" ? "block z-10" : "hidden pointer-events-none"
+            }`}
+          >
             <Evaluation hasDocs={docs.length > 0} />
-          )}
+          </div>
         </div>
       </main>
     </div>

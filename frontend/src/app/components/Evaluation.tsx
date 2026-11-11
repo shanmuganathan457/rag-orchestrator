@@ -12,7 +12,7 @@ const LABELS: Record<string, { name: string; hint: string }> = {
 function Bar({ value, best }: { value: number; best: boolean }) {
   return (
     <div className="flex items-center gap-3">
-      <div className="h-2 w-40 overflow-hidden rounded-full bg-ink-700">
+      <div className="h-2 w-48 overflow-hidden rounded-full bg-ink-700">
         <div
           className={`h-full rounded-full ${best ? "bg-accent" : "bg-zinc-500"}`}
           style={{ width: `${Math.round(value * 100)}%` }}
@@ -45,8 +45,8 @@ export default function Evaluation({ hasDocs }: { hasDocs: boolean }) {
   const bestMrr = result ? Math.max(...modes.map((m) => result.summary[m].mrr)) : 0;
 
   return (
-    <div className="h-full overflow-y-auto px-6 py-8">
-      <div className="mx-auto max-w-3xl">
+    <div className="h-full w-full overflow-y-auto px-4 sm:px-8 lg:px-12 py-8">
+      <div className="w-full">
         <h2 className="text-2xl font-semibold tracking-tight">Retrieval evaluation</h2>
         <p className="mt-2 text-sm leading-relaxed text-zinc-400">
           Samples random passages from your documents, has the LLM write a question for each, then checks whether
@@ -59,10 +59,10 @@ export default function Evaluation({ hasDocs }: { hasDocs: boolean }) {
             <input
               type="number"
               min={2}
-              max={30}
+              max={20}
               value={n}
               onChange={(e) => setN(Number(e.target.value))}
-              className="ml-3 w-20 rounded-lg border border-ink-600 bg-ink-800 px-3 py-1.5 text-sm outline-none focus:border-accent"
+              className="ml-2 w-16 rounded-md border border-ink-600 bg-ink-800 px-2 py-1 text-center font-mono text-sm text-zinc-100"
             />
           </label>
           <button
@@ -70,63 +70,109 @@ export default function Evaluation({ hasDocs }: { hasDocs: boolean }) {
             disabled={busy || !hasDocs}
             className="rounded-xl bg-accent px-5 py-2 text-sm font-medium text-ink-950 transition hover:bg-accent-soft disabled:opacity-40"
           >
-            {busy ? "Running…" : "Run evaluation"}
+            {busy ? "Evaluating…" : "Run evaluation"}
           </button>
-          {busy && <span className="text-xs text-zinc-500">Free LLM tiers are rate limited, this can take a minute.</span>}
         </div>
+
         {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
 
         {result && (
-          <>
-            <div className="mt-8 overflow-hidden rounded-xl border border-ink-700">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-ink-900 text-xs uppercase tracking-wider text-zinc-500">
-                  <tr>
-                    <th className="px-4 py-3">Strategy</th>
-                    <th className="px-4 py-3">Hit@1</th>
-                    <th className="px-4 py-3">Hit@{result.k}</th>
-                    <th className="px-4 py-3">MRR</th>
-                    <th className="px-4 py-3">Latency</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {modes.map((m) => {
-                    const s = result.summary[m];
-                    const best = s.mrr === bestMrr;
-                    return (
-                      <tr key={m} className="border-t border-ink-700">
-                        <td className="px-4 py-3">
-                          <div className="font-medium">{LABELS[m].name}</div>
-                          <div className="text-xs text-zinc-500">{LABELS[m].hint}</div>
-                        </td>
-                        <td className="px-4 py-3"><Bar value={s.hit_at_1} best={best} /></td>
-                        <td className="px-4 py-3"><Bar value={s.hit_at_5} best={best} /></td>
-                        <td className="px-4 py-3 font-mono">{s.mrr.toFixed(3)}</td>
-                        <td className="px-4 py-3 font-mono text-zinc-400">{s.avg_latency_ms} ms</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <p className="mt-2 text-xs text-zinc-500">Based on {result.questions} generated questions.</p>
+          <div className="mt-8 space-y-8">
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {modes.map((mode) => {
+                const s = result.summary[mode];
+                const isBest = s.mrr === bestMrr && bestMrr > 0;
+                return (
+                  <div
+                    key={mode}
+                    className={`rounded-xl border p-5 transition ${
+                      isBest ? "border-accent/60 bg-accent/5 shadow-md" : "border-ink-700 bg-ink-900"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-zinc-100">{LABELS[mode]?.name ?? mode}</span>
+                      {isBest && (
+                        <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[10px] font-medium text-accent">
+                          Best
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1 text-xs text-zinc-400">{LABELS[mode]?.hint}</p>
 
-            <h3 className="mt-8 text-sm font-medium text-zinc-300">Per-question ranks of the correct passage</h3>
-            <ul className="mt-3 space-y-2">
-              {result.details.map((d, i) => (
-                <li key={i} className="rounded-lg border border-ink-700 bg-ink-900 px-4 py-3 text-sm">
-                  <div className="text-zinc-300">{d.question}</div>
-                  <div className="mt-1.5 flex gap-4 font-mono text-xs text-zinc-500">
-                    {Object.entries(d.ranks).map(([mode, rank]) => (
-                      <span key={mode}>
-                        {mode}: <span className={rank ? "text-accent" : "text-red-400"}>{rank ?? "miss"}</span>
-                      </span>
-                    ))}
+                    <div className="mt-4 space-y-2">
+                      <div className="flex items-center justify-between text-xs text-zinc-400">
+                        <span>Hit @ 1</span>
+                        <Bar value={s.hit_at_1} best={isBest} />
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-zinc-400">
+                        <span>Hit @ 5</span>
+                        <Bar value={s.hit_at_5} best={isBest} />
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex items-center justify-between border-t border-ink-700/60 pt-3 text-xs">
+                      <span className="text-zinc-400">MRR: <strong className="text-zinc-200">{s.mrr.toFixed(3)}</strong></span>
+                      <span className="text-zinc-500 font-mono">{s.avg_latency_ms.toFixed(0)} ms</span>
+                    </div>
                   </div>
-                </li>
-              ))}
-            </ul>
-          </>
+                );
+              })}
+            </div>
+
+            {/* Detailed per-question table */}
+            <div className="rounded-xl border border-ink-700 bg-ink-900 overflow-hidden">
+              <div className="border-b border-ink-700/80 px-4 py-3 font-medium text-xs text-zinc-300">
+                Detailed results ({result.details.length} questions)
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-ink-950/60 text-zinc-400 border-b border-ink-700/60">
+                    <tr>
+                      <th className="px-4 py-2.5 font-medium">Synthetic Question</th>
+                      <th className="px-4 py-2.5 font-medium text-center">Vector Rank</th>
+                      <th className="px-4 py-2.5 font-medium text-center">Keyword Rank</th>
+                      <th className="px-4 py-2.5 font-medium text-center">Hybrid Rank</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-ink-700/50">
+                    {result.details.map((d, i) => (
+                      <tr key={i} className="hover:bg-ink-800/50 transition">
+                        <td className="px-4 py-3 text-zinc-200 max-w-md">{d.question}</td>
+                        <td className="px-4 py-3 text-center font-mono">
+                          {d.ranks.vector !== null ? (
+                            <span className={d.ranks.vector === 1 ? "text-emerald-400 font-semibold" : "text-zinc-300"}>
+                              #{d.ranks.vector}
+                            </span>
+                          ) : (
+                            <span className="text-zinc-600">-</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-center font-mono">
+                          {d.ranks.keyword !== null ? (
+                            <span className={d.ranks.keyword === 1 ? "text-emerald-400 font-semibold" : "text-zinc-300"}>
+                              #{d.ranks.keyword}
+                            </span>
+                          ) : (
+                            <span className="text-zinc-600">-</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-center font-mono">
+                          {d.ranks.hybrid !== null ? (
+                            <span className={d.ranks.hybrid === 1 ? "text-emerald-400 font-semibold" : "text-zinc-300"}>
+                              #{d.ranks.hybrid}
+                            </span>
+                          ) : (
+                            <span className="text-zinc-600">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

@@ -14,8 +14,8 @@ function Answer({ text, sources, streaming }: { text: string; sources?: Source[]
 
   // Clean up stray "[n]\n." patterns before rendering
   const cleaned = text
-    .replace(/(\[\d+\])\s*\n+\s*([.!?,])/g, '$1$2')   // [n]\n. → [n].
-    .replace(/([.!?])\s+(\[\d+\])\s*([.!?]?)/g, (_, p, ref, ep) => ` ${ref}${p}${ep}`); // .[n] → [n].
+    .replace(/(\[\d+\])\s*\n+\s*([.!?,])/g, "$1$2")
+    .replace(/([.!?])\s+(\[\d+\])\s*([.!?]?)/g, (_, p, ref, ep) => ` ${ref}${p}${ep}`);
 
   const parts = cleaned.split(/(\[\d+\])/g);
 
@@ -53,7 +53,8 @@ function Answer({ text, sources, streaming }: { text: string; sources?: Source[]
                   : "border-ink-600 text-zinc-400 hover:border-zinc-500"
               }`}
             >
-              <span className="font-mono text-accent">[{s.n}]</span> {s.doc_name}{s.page ? ` · p.${s.page}` : ""}
+              <span className="font-mono text-accent">[{s.n}]</span> {s.doc_name}
+              {s.page ? ` · p.${s.page}` : ""}
             </button>
           ))}
         </div>
@@ -70,15 +71,31 @@ function Answer({ text, sources, streaming }: { text: string; sources?: Source[]
   );
 }
 
+type Props = {
+  docIds: number[] | null;
+  hasDocs: boolean;
+  useGraph?: boolean;
+  messages: Msg[];
+  setMessages: React.Dispatch<React.SetStateAction<Msg[]>>;
+  onNewSession?: () => void;
+};
 
-export default function Chat({ docIds, hasDocs, useGraph = false }: { docIds: number[] | null; hasDocs: boolean; useGraph?: boolean }) {
-  const [messages, setMessages] = useState<Msg[]>([]);
+export default function Chat({
+  docIds,
+  hasDocs,
+  useGraph = false,
+  messages,
+  setMessages,
+  onNewSession,
+}: Props) {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const bottom = useRef<HTMLDivElement>(null);
   const abort = useRef<AbortController | null>(null);
 
-  useEffect(() => { bottom.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  useEffect(() => {
+    bottom.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   async function send(q: string) {
     const question = q.trim();
@@ -106,19 +123,24 @@ export default function Chat({ docIds, hasDocs, useGraph = false }: { docIds: nu
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex-1 overflow-y-auto px-6 py-6">
-        <div className="mx-auto max-w-3xl space-y-6">
+    <div className="flex h-full w-full flex-col">
+      {/* Scrollable messages container - spans full available right side */}
+      <div className="flex-1 overflow-y-auto px-4 sm:px-8 lg:px-12 py-6">
+        <div className="w-full space-y-6">
           {messages.length === 0 && (
             <div className="pt-16 text-center">
               <h2 className="text-2xl font-semibold tracking-tight">
                 {hasDocs ? "What would you like to know?" : "Upload a document to begin"}
               </h2>
-              <p className="mx-auto mt-2 max-w-md text-sm text-zinc-400">
+              <p className="mx-auto mt-2 max-w-xl text-sm text-zinc-400">
                 Answers are generated only from your documents and link back to the exact page.
               </p>
               {/* RAG mode badge */}
-              <span className={`mt-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${useGraph ? "bg-violet-900/60 text-violet-300" : "bg-zinc-800 text-zinc-400"}`}>
+              <span
+                className={`mt-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
+                  useGraph ? "bg-violet-900/60 text-violet-300" : "bg-zinc-800 text-zinc-400"
+                }`}
+              >
                 <span className={`h-1.5 w-1.5 rounded-full ${useGraph ? "bg-violet-400" : "bg-zinc-500"}`} />
                 {useGraph ? "GraphRAG mode" : "Standard RAG mode"}
               </span>
@@ -128,7 +150,7 @@ export default function Chat({ docIds, hasDocs, useGraph = false }: { docIds: nu
                     <button
                       key={s}
                       onClick={() => send(s)}
-                      className="rounded-full border border-ink-600 px-3 py-1.5 text-sm text-zinc-300 transition hover:border-accent hover:text-accent-soft"
+                      className="rounded-full border border-ink-600 px-3.5 py-1.5 text-xs text-zinc-300 transition hover:border-accent hover:text-accent-soft"
                     >
                       {s}
                     </button>
@@ -141,16 +163,23 @@ export default function Chat({ docIds, hasDocs, useGraph = false }: { docIds: nu
           {messages.map((m, i) =>
             m.role === "user" ? (
               <div key={i} className="flex justify-end">
-                <div className="max-w-[85%] rounded-2xl rounded-br-md bg-accent/90 px-4 py-2.5 text-ink-950">
+                <div className="max-w-[85%] rounded-2xl rounded-br-md bg-accent/90 px-4 py-2.5 text-ink-950 shadow-sm text-sm sm:text-base">
                   {m.content}
                 </div>
               </div>
             ) : (
-              <div key={i} className="max-w-[92%] rounded-2xl rounded-bl-md border border-ink-700 bg-ink-900 px-4 py-3">
+              <div
+                key={i}
+                className="w-full rounded-2xl rounded-bl-md border border-ink-700 bg-ink-900 px-5 py-4 shadow-sm"
+              >
                 {m.content === "" && !m.error && !m.sources ? (
                   <span className="text-sm text-zinc-500">Searching documents…</span>
                 ) : (
-                  <Answer text={m.content} sources={m.sources} streaming={busy && i === messages.length - 1 && !m.error} />
+                  <Answer
+                    text={m.content}
+                    sources={m.sources}
+                    streaming={busy && i === messages.length - 1 && !m.error}
+                  />
                 )}
                 {m.error && <p className="mt-2 text-sm text-red-400">{m.error}</p>}
               </div>
@@ -160,11 +189,15 @@ export default function Chat({ docIds, hasDocs, useGraph = false }: { docIds: nu
         </div>
       </div>
 
+      {/* Input container - spans full available width */}
       <form
-        onSubmit={(e) => { e.preventDefault(); send(input); }}
-        className="border-t border-ink-700 bg-ink-900/60 px-6 py-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          send(input);
+        }}
+        className="border-t border-ink-700 bg-ink-900/60 px-4 sm:px-8 lg:px-12 py-3.5"
       >
-        <div className="mx-auto flex max-w-3xl gap-3">
+        <div className="flex w-full gap-3">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -184,7 +217,7 @@ export default function Chat({ docIds, hasDocs, useGraph = false }: { docIds: nu
             <button
               type="submit"
               disabled={!input.trim() || !hasDocs}
-              className="rounded-xl bg-accent px-5 text-sm font-medium text-ink-950 transition hover:bg-accent-soft disabled:opacity-40"
+              className="rounded-xl bg-accent px-6 text-sm font-medium text-ink-950 transition hover:bg-accent-soft disabled:opacity-40"
             >
               Ask
             </button>
