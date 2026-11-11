@@ -97,22 +97,14 @@ export default function Sidebar({
       {/* Header with ChatGPT style branding & icons */}
       <div className="px-4 pb-3 pt-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {/* ChatGPT style spark / spiral logo */}
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-800 text-zinc-100 shadow-sm border border-zinc-700/60">
-              <svg
-                className="h-4 w-4"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z" />
-                <path d="M12 6a6 6 0 0 0-6 6c0 2 1.5 3.5 3.5 3.5H14" />
-                <path d="M12 10a2 2 0 1 1-2 2" />
-              </svg>
+          <div className="flex items-center gap-2.5">
+            {/* Project Logo Image */}
+            <div className="relative flex h-8 w-8 shrink-0 overflow-hidden rounded-lg border border-zinc-700/80 bg-zinc-900 shadow-md">
+              <img
+                src="/logo.jpg"
+                alt="RAG Orchestrator Logo"
+                className="h-full w-full object-cover"
+              />
             </div>
             <h1 className="text-sm font-semibold tracking-tight text-zinc-100">RAG Orchestrator</h1>
           </div>

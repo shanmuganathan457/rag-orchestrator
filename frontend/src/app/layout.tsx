@@ -4,6 +4,11 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "RAG Orchestrator · Chat with your documents",
   description: "Retrieval-augmented Q&A with hybrid search, citations and a built-in evaluation dashboard.",
+  icons: {
+    icon: "/logo.jpg",
+    shortcut: "/logo.jpg",
+    apple: "/logo.jpg",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
