@@ -33,12 +33,27 @@ export default function Settings({ onClose, onSwitched, useGraph, onToggleGraph 
   const [status, setStatus] = useState<Status>(null);
 
   useEffect(() => {
+    try {
+      const saved = localStorage.getItem("rag_llm_provider_config");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.provider) setProvider(parsed.provider);
+        if (parsed.model) setModel(parsed.model);
+        if (parsed.apiKey) setApiKey(parsed.apiKey);
+        if (parsed.baseUrl) setBaseUrl(parsed.baseUrl);
+      }
+    } catch {
+      /* ignore */
+    }
+
     getProviders()
       .then((p) => {
         setInfo(p);
-        setProvider(p.provider);
-        setModel(p.model);
-        if (p.base_url) setBaseUrl(p.base_url);
+        if (!localStorage.getItem("rag_llm_provider_config")) {
+          setProvider(p.provider);
+          setModel(p.model);
+          if (p.base_url) setBaseUrl(p.base_url);
+        }
       })
       .catch(() => {});
   }, []);
@@ -60,6 +75,21 @@ export default function Settings({ onClose, onSwitched, useGraph, onToggleGraph 
         api_key: apiKey || undefined,
         base_url: NEEDS_URL.includes(provider) ? baseUrl : undefined,
       });
+
+      try {
+        localStorage.setItem(
+          "rag_llm_provider_config",
+          JSON.stringify({
+            provider,
+            model,
+            apiKey,
+            baseUrl: NEEDS_URL.includes(provider) ? baseUrl : undefined,
+          })
+        );
+      } catch {
+        /* storage full */
+      }
+
       setStatus({ ok: true, msg: `Switched to ${provider} · ${model}` });
       onSwitched();
     } catch (e) {

@@ -7,7 +7,7 @@ import Settings from "./components/Settings";
 import Sidebar, { ChatSession } from "./components/Sidebar";
 import VisualizationStudio from "./components/VisualizationStudio";
 import { VisualizationProvider, useVisualization } from "./context/VisualizationContext";
-import { Doc, Health, Msg, getHealth, listDocs } from "./lib/api";
+import { Doc, Health, Msg, getHealth, listDocs, switchProvider } from "./lib/api";
 
 const CHAT_STORAGE_KEY = "rag_orchestrator_chat_sessions_v1";
 
@@ -138,6 +138,26 @@ function MainApp() {
   useEffect(() => {
     refresh();
     refreshHealth();
+
+    // Auto-restore saved LLM provider if backend restarted on defaults
+    try {
+      const saved = localStorage.getItem("rag_llm_provider_config");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.provider && parsed.provider !== "ollama" && parsed.apiKey) {
+          switchProvider({
+            provider: parsed.provider,
+            model: parsed.model,
+            api_key: parsed.apiKey,
+            base_url: parsed.baseUrl,
+          })
+            .then(() => refreshHealth())
+            .catch(() => {});
+        }
+      }
+    } catch {
+      /* ignore */
+    }
   }, [refresh, refreshHealth]);
 
   const toggle = (id: number) =>
