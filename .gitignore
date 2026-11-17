@@ -3,6 +3,7 @@ docmind-reference/
 
 # secrets
 .env
+**/discord_backup_codes*
 
 # python
 __pycache__/
