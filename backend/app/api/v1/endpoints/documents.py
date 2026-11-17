@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -9,6 +11,8 @@ from app.providers.embeddings.base import validate_embedding_batch
 from app.providers.factory import get_embedding
 from app.services.graph_ingest import graph_ingest
 from app.services.ingestion import ingestion_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 MAX_FILE_SIZE = 25 * 1024 * 1024  # 25 MB
@@ -66,6 +70,7 @@ async def upload_document(file: UploadFile = File(...), db: Session = Depends(ge
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
+        logger.error("Error processing document: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail="Error processing document") from exc
     if not chunks_info:
         raise HTTPException(status_code=422, detail="No extractable text found (scanned PDFs need OCR).")
@@ -78,6 +83,7 @@ async def upload_document(file: UploadFile = File(...), db: Session = Depends(ge
             settings.EMBEDDING_DIMENSION,
         )
     except Exception as exc:
+        logger.error("Error generating embeddings: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail="Error generating document embeddings") from exc
 
     try:
@@ -111,6 +117,7 @@ async def upload_document(file: UploadFile = File(...), db: Session = Depends(ge
 
     except Exception as exc:
         db.rollback()
+        logger.error("Error saving document to DB: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail="Error saving document") from exc
 
     page_nums = [info.page_num for info in chunks_info if info.page_num]
